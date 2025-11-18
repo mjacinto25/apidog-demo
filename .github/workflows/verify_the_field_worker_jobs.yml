@@ -12,11 +12,6 @@ jobs:
       JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
       JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
       JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
-      GITHUB_WORKFLOW_NAME: ${{ github.workflow }}
-      GITHUB_RUN_NUMBER: ${{ github.workflow }}
-      GITHUB_RUN_ID: ${{ github.run_id }}
-      GITHUB_SHA: ${{ github.sha }}
-      GITHUB_BRANCH: ${{ github.ref }}
 
     steps:
     - uses: actions/checkout@v3
@@ -38,7 +33,7 @@ jobs:
       with:
         script: |
           const jiraUrl = `${process.env.JIRA_BASE_URL}/rest/api/2/issue`;
-    
+
            const description =
                 "Test failure detected in GitHub Actions.\n" +
                 "Run Number: " + process.env.GITHUB_RUN_NUMBER + "\n" +
@@ -49,7 +44,7 @@ jobs:
           const payload = {
             fields: {
               project: { key: process.env.JIRA_PROJECT_KEY },
-              summary: { key: process.env.GITHUB_WORKFLOW_NAME },
+              summary:  process.env.GITHUB_WORKFLOW_NAME,
               description: description,
               issuetype: { name: "Bug" }
             }
