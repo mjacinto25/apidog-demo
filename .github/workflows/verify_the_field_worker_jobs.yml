@@ -44,7 +44,7 @@ jobs:
           const payload = {
             fields: {
               project: { key: process.env.JIRA_PROJECT_KEY },
-              summary:  process.env.GITHUB_WORKFLOW_NAME,
+              summary:  process.env.GITHUB_WORKFLOW,
               description: description,
               issuetype: { name: "Bug" }
             }
