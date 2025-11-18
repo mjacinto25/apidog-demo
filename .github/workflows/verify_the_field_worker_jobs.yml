@@ -41,7 +41,6 @@ jobs:
     
            const description =
                 "Test failure detected in GitHub Actions.\n" +
-                "Workflow: " + process.env.GITHUB_WORKFLOW_NAME + "\n" +
                 "Run Number: " + process.env.GITHUB_RUN_NUMBER + "\n" +
                 "Run ID: " + process.env.GITHUB_RUN_ID + "\n" +
                 "Commit: " + process.env.GITHUB_SHA + "\n" +
@@ -50,7 +49,7 @@ jobs:
           const payload = {
             fields: {
               project: { key: process.env.JIRA_PROJECT_KEY },
-              summary: "Automated Test Failure in GitHub Actions",
+              summary: { key: process.env.GITHUB_WORKFLOW_NAME },
               description: description,
               issuetype: { name: "Bug" }
             }
