@@ -7,42 +7,57 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      APIDOG_ACCESS_TOKEN: ${{secrets.APIDOG_ACCESS_TOKEN}}
+      APIDOG_ACCESS_TOKEN: ${{ secrets.APIDOG_ACCESS_TOKEN }}
 
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Node.js environment
+    - name: Setup Node.js
       uses: actions/setup-node@v2
       with:
         node-version: '18'
 
-    - name: Install Apidog CLI
+    - name: Install ApiDog CLI
       run: npm install -g apidog-cli
 
-    - name: Running Test Scenario
-      run: apidog run --access-token $APIDOG_ACCESS_TOKEN -t 1542843 -e 5154254 -n 1 -r json --output result.json
+    - name: Run ApiDog tests (JUnit report)
+      run: |
+        mkdir -p reports
+        apidog run \
+          --access-token $APIDOG_ACCESS_TOKEN \
+          -t 1542843 \
+          -e 5154254 \
+          -n 1 \
+          -r junit \
+          > reports/result.xml
 
     - name: Extract Failed Tests
       if: failure()
       run: |
-        # Extract names and error messages
-        FAILED_DETAILS=$(jq -r '.tests[] | select(.status=="failed") | "\(.name): \(.errorMessage)"' result.json | paste -sd "; " -)
-        # If there are multiple failures, join them with semicolon for summary
-        echo "FAILED_DETAILS=$FAILED_DETAILS" >> $GITHUB_ENV
+        FAILED_DETAILS=$(xmllint --xpath \
+        "string(//testsuite[@failures>0]/testcase[failure]/failure)" \
+        reports/result.xml)
 
+        # If empty, fallback message
+        if [ -z "$FAILED_DETAILS" ]; then
+          FAILED_DETAILS="ApiDog tests failed but no details were extracted."
+        fi
+
+        echo "FAILED_DETAILS<<EOF" >> $GITHUB_ENV
+        echo "$FAILED_DETAILS" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
 
     - name: Create Jira Ticket if Tests Fail
       if: failure()
       run: |
-          curl -X POST \
+        curl -X POST \
           -H "Content-Type: application/json" \
           -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
           "${{ secrets.JIRA_BASE_URL }}/rest/api/2/issue" \
           -d '{
                 "fields": {
                   "project": { "key": "'"${{ secrets.JIRA_PROJECT_KEY }}"'" },
-                  "summary": "'"${FAILED_DETAILS}"'",
+                  "summary": "ApiDog pipeline failure",
                   "description": "'"${FAILED_DETAILS}"'",
                   "issuetype": { "name": "Task" }
                 }
