@@ -8,57 +8,65 @@ jobs:
 
     env:
       APIDOG_ACCESS_TOKEN: ${{ secrets.APIDOG_ACCESS_TOKEN }}
+      JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+      GITHUB_WORKFLOW_NAME: ${{ github.workflow }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+      GITHUB_SHA: ${{ github.sha }}
+      GITHUB_BRANCH: ${{ github.ref }}
 
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Node.js
+    - name: Setup Node.js environment
       uses: actions/setup-node@v2
       with:
         node-version: '18'
 
-    - name: Install ApiDog CLI
+    - name: Install Apidog CLI
       run: npm install -g apidog-cli
 
-    - name: Run ApiDog tests (JUnit report)
+    - name: Running Test Scenario
+      id: apidog
       run: |
-        mkdir -p reports
-        apidog run \
-          --access-token $APIDOG_ACCESS_TOKEN \
-          -t 1542843 \
-          -e 5154254 \
-          -n 1 \
-          -r junit \
-          > reports/result.xml
-
-    - name: Extract Failed Tests
-      if: failure()
-      run: |
-        FAILED_DETAILS=$(xmllint --xpath \
-        "string(//testsuite[@failures>0]/testcase[failure]/failure)" \
-        reports/result.xml)
-
-        # If empty, fallback message
-        if [ -z "$FAILED_DETAILS" ]; then
-          FAILED_DETAILS="ApiDog tests failed but no details were extracted."
-        fi
-
-        echo "FAILED_DETAILS<<EOF" >> $GITHUB_ENV
-        echo "$FAILED_DETAILS" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
+        # Allow script to continue even if tests fail
+        set +e
+        apidog run --access-token "$APIDOG_ACCESS_TOKEN" -t 1542843 -e 5154254 -n 1 -r html,cli
+        EXIT_CODE=$?
+        echo "APIDOG_EXIT_CODE=$EXIT_CODE" >> $GITHUB_ENV
+        exit 0
 
     - name: Create Jira Ticket if Tests Fail
-      if: failure()
-      run: |
-        curl -X POST \
-          -H "Content-Type: application/json" \
-          -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
-          "${{ secrets.JIRA_BASE_URL }}/rest/api/2/issue" \
-          -d '{
-                "fields": {
-                  "project": { "key": "'"${{ secrets.JIRA_PROJECT_KEY }}"'" },
-                  "summary": "ApiDog pipeline failure",
-                  "description": "'"${FAILED_DETAILS}"'",
-                  "issuetype": { "name": "Task" }
-                }
-              }'
+      if: env.APIDOG_EXIT_CODE != '0'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const axios = require('axios');
+
+          const jiraUrl = process.env.JIRA_BASE_URL + "/rest/api/2/issue";
+
+          const description =
+            "Test failure detected in GitHub Actions.\n" +
+            "Workflow: " + process.env.GITHUB_WORKFLOW_NAME + "\n" +
+            "Run ID: " + process.env.GITHUB_RUN_ID + "\n" +
+            "Commit: " + process.env.GITHUB_SHA + "\n" +
+            "Branch: " + process.env.GITHUB_BRANCH;
+
+          const payload = {
+            fields: {
+              project: { key: process.env.JIRA_PROJECT_KEY },
+              summary: "Automated Test Failure in GitHub Actions",
+              description: description,
+              issuetype: { name: "Bug" }
+            }
+          };
+
+          await axios.post(jiraUrl, payload, {
+            headers: { "Content-Type": "application/json" },
+            auth: {
+              username: process.env.JIRA_EMAIL,
+              password: process.env.JIRA_API_TOKEN
+            }
+          });
