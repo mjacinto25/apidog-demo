@@ -1,4 +1,4 @@
-name: Verify the field worker jobs - update
+name: Verify the field worker jobs
 
 on: [push, pull_request]
 
@@ -40,7 +40,7 @@ jobs:
           const payload = {
             fields: {
               project: { key: process.env.JIRA_PROJECT_KEY },
-              summary: "[Automated Test Failure] - Workflow: " +  process.env.GITHUB_WORKFLOW,
+              summary: process.env.GITHUB_WORKFLOW,
               description: description,
               issuetype: { name: "Bug" }
             }
