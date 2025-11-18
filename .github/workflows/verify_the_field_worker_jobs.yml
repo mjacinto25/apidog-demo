@@ -21,4 +21,20 @@ jobs:
       run: npm install -g apidog-cli
 
     - name: Running Test Scenario
-      run: apidog run --access-token $APIDOG_ACCESS_TOKEN -t 1542843 -e 5154252 -n 1 -r html,cli
+      run: apidog run --access-token $APIDOG_ACCESS_TOKEN -t 1542843 -e 5154254 -n 1 -r html,cli
+
+    - name: Create Jira Ticket if Tests Fail
+      if: failure()
+      run: |
+          curl -X POST \
+          -H "Content-Type: application/json" \
+          -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
+          "${{ secrets.JIRA_BASE_URL }}/rest/api/2/issue" \
+          -d '{
+                "fields": {
+                  "project": { "key": "'"${{ secrets.JIRA_PROJECT_KEY }}"'" },
+                  "summary": "ApiDog Test Failed",
+                  "description": "One or more ApiDog tests failed in the pipeline.",
+                  "issuetype": { "name": "Task" }
+                }
+              }'
