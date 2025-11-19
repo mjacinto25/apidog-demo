@@ -1,4 +1,4 @@
-name: Verify the field worker jobs
+name: Verify the field worker jobs - Test
 
 on: [push, pull_request]
 
