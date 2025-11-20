@@ -3,7 +3,7 @@ name: Demo
 on: [push, pull_request]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     env:
@@ -12,7 +12,7 @@ jobs:
       JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
       JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
       JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
-
+  
     strategy:
       matrix:
         scenario: [1554687,1556535,1554749]
