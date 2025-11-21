@@ -1,4 +1,4 @@
-name: Demo-x
+name: Demo
 
 on: [push, pull_request]
 
